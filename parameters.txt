@@ -1,4 +1,4 @@
-webcam=1
+webcam=2
 minR, maxR = 30, 50
 errorMargin = 100
 squareSize = 300

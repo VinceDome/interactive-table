@@ -45,11 +45,17 @@ def DetectCircles(source):
     maxRadius=maxR          # Maximum kör sugara
     )
 
-  
+
     # Ellenőrizze, hogy talált-e köröket
     if insideCircles is not None:
         # Körök koordinátáinak kinyerése
         return np.uint16(np.around(insideCircles))
+
+def DisplayCircles(screen, circles):
+    for circle in circles[0, :]:
+        center = (circle[0], circle[1])
+        radius = circle[2]
+        cv2.circle(screen, center, radius+5, (0, 0, 255), 3)
 
 def text_utf(image, string, loc, size):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -68,9 +74,19 @@ def CenteredText(image, string, loc, size, color, thickness):
     textsize = cv2.getTextSize(string, cv2.FONT_HERSHEY_COMPLEX, size, thickness)[0]
 
     loc = (int(loc[0]-(textsize[0]/2)), int(loc[1]+(textsize[1]/2)))
-    
+
     cv2.putText(image, string, loc, cv2.FONT_HERSHEY_COMPLEX, size, color, thickness)
     return image
+
+
+def Slider(screen, x, y1, y2, circles):
+    cv2.line(screen, (x, y1), (x, y2), (255, 0, 0), 20)
+    for circle in circles[0, :]:
+        if (x-100 < circle[0] < x+100) and (y1 < circle[1] < y2):
+            cv2.line(screen, (x, y1), (x, circle[1]), (0, 255, 0), 20)
+            cv2.circle(screen, (x, circle[1]), 30, (0, 255, 0), 30)
+            return (circle[1]-y1)/(y2-y1)
+    return 0
 
 with open("parameters.txt", "r", encoding="utf-8") as file:
     for i in file:
@@ -102,7 +118,7 @@ megyek = cv2.resize(megyek, screenSize)
 #ablak kreálás
 cv2.namedWindow("Webkamera", cv2.WINDOW_NORMAL)
 
-#az ablaknak a mozgatása a projektor másodlagos képernyőjére 
+#az ablaknak a mozgatása a projektor másodlagos képernyőjére
 cv2.moveWindow("Webkamera", yogaSize[0], 0)
 
 #fulscreen
@@ -115,7 +131,7 @@ cv2.waitKey(1)
 while running:
     playerGuesses = []
     chosenLocations = []
-
+    color = 255
     while True:
 
         megyekT = megyek.copy()
@@ -135,21 +151,12 @@ while running:
         circles = DetectCircles(gray)
         if circles is None:
             continue
-        
-        benne = None
-        loc = False
-        for circle in circles[0, :]:
-            center = (circle[0], circle[1])
-            radius = circle[2]
-            cv2.circle(screen, center, radius+5, (0, 0, 255), 3)
-            if (200 > center[0] > 100) and (500 > center[1] > 100):
-                benne = True
-                loc = center[1]
 
-        cv2.rectangle(screen, (100, 50), (200, 500), (255, 0, 0), 10)
-        cv2.line(screen, (150, 50), (150, 500), (255, 0, 0), 5)
-        if benne:
-            cv2.circle(screen, (150, loc), 15, (0, 155, 0), 5)
+        DisplayCircles(screen, circles)
+
+        value = Slider(screen, 500, 300, 1000, circles)
+
+        CenteredText(screen, "Number of questions: "+str(int(round(value, 1)*10)), (600, 600), 4, (0, 0, 255), 5)
         cv2.imshow('Webkamera', screen)
         cv2.waitKey(1)
 
@@ -184,7 +191,7 @@ while running:
             screen = megyekT.copy()
 
             cv2.putText(screen, str(round((st+guessTime-time.perf_counter()))), (100, 300), cv2.FONT_HERSHEY_SIMPLEX, 5, (255, 0, 0), 20)
-            
+
             circles = DetectCircles(gray)
             if circles is None:
                 continue
@@ -198,22 +205,22 @@ while running:
                 #utolsó fél másodperc, az összes távolságot elmentem, amiből kiválasztom a legközelebbit
                 if time.perf_counter() > st + guessTime - 0.5:
                     dist = int(math.dist(location.coords, center))
-                    
-                    if not closest: 
+
+                    if not closest:
                         closest = Guess(dist, center, radius)
                     elif dist < closest.radius:
                         closest = Guess(dist, center, radius)
-                
+
                 cv2.circle(screen, center, radius+5, (0, 0, 255), 3)
                 #cv2.circle(megyek, center, testradius, (0, 0, 255), testwidth)
-                
-    
-                
+
+
+
             # Kijelzés a képernyőn
-        
+
             #képfrissítés
             cv2.imshow('Webkamera', screen)
-            
+
             # Kilépés a 'q' lenyomásával
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -230,24 +237,24 @@ while running:
 
         #displaying result immediately
         wt = time.perf_counter()
-        
+
         while time.perf_counter() < wt + displayTime:
             screen = megyekT.copy()
-            
+
             if best:
                 cv2.line(screen, best.center, location.coords, (0,255,0), 10)
 
                 cv2.circle(screen, best.center, best.radius, (0, 255, 0), 30)
                 cv2.circle(screen, location.coords, testradius, (0, 0, 255), 20)
 
-                
+
                 CenteredText(screen, f"Distance: {best.dist}", (screenSize[0]/2, 950), 3, (255, 0, 0), 10)
             else:
                 CenteredText(screen, "No guess!", (screenSize[0]/2, 950), 3, (255, 0, 0), 10)
 
             cv2.putText(screen, str(round((wt+displayTime-time.perf_counter()))), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 5, (255, 0, 0), 20)
 
-            
+
             cv2.imshow('Webkamera', screen)
             cv2.waitKey(1)
 
@@ -276,7 +283,7 @@ while running:
     selecting = True
     lefttime = None
     righttime = None
-    
+
 
     while selecting:
         #összes körön végigmenni
@@ -296,12 +303,12 @@ while running:
 
         circles = DetectCircles(gray)
         if circles is not None:
-           
+
             for circle in circles[0, :]:
                 center = (circle[0], circle[1])
                 radius = circle[2]
                 cv2.circle(screen, center, radius+5, (0, 0, 255), 3)
-                
+
                 #ha benne van a bal téglalapban
                 if (squareSize > center[0] > 0) and (screenSize[1] > center[1] > screenSize[1]-squareSize):
                     left = (0,0,255)
@@ -313,13 +320,13 @@ while running:
                     if righttime is None:
                         righttime = time.perf_counter()
                         break
-        
+
 
         if left == (255,0,0):
             lefttime = None
         if right == (255,0,0):
             righttime = None
-        
+
 
         if lefttime is not None:
             print(lefttime, time.perf_counter())
@@ -330,8 +337,8 @@ while running:
                 exit()
 
         cv2.rectangle(screen, (0, screenSize[1]-squareSize), (squareSize, screenSize[1]), left, 20)
-        cv2.rectangle(screen, (screenSize[0]-squareSize, screenSize[1]-squareSize), screenSize, right, 20)  
-        
+        cv2.rectangle(screen, (screenSize[0]-squareSize, screenSize[1]-squareSize), screenSize, right, 20)
+
         CenteredText(screen, "Continue", (int(squareSize/2), int(screenSize[1]-(squareSize/2))), 1.7, (255, 0, 0), 4)
         CenteredText(screen, "Exit", (screenSize[0]-squareSize/2, int(screenSize[1]-(squareSize/2))), 1.7, (255, 0, 0), 4)
         #cv2.putText(screen, "Continue", (int(squareSize/2), int(screenSize[1]-(squareSize/2))), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 5)
