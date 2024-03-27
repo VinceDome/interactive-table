@@ -1,8 +1,8 @@
 webcam=2
-minR, maxR = 30, 50
+minR, maxR = 15, 50
 errorMargin = 100
 squareSize = 300
 selectionTime = 3
-guessTime=2
-questions=1
-displayTime = 2
+guessTime=15
+questions=5
+displayTime = 5
