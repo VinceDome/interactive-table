@@ -1,6 +1,6 @@
 webcam=2
 minR, maxR = 15, 50
-errorMargin = 100
+errorMargin = 60
 squareSize = 300
 selectionTime = 3
 guessTime=15

@@ -177,9 +177,13 @@ def CenteredText(image, string, loc, size, color, thickness):
 def RandomHour():
 
     num = random.randint(0, 288)
-    nagymutato = num % 12
-    kismutato = (num/12) % 12
-    print(num, nagymutato, kismutato)
+    ora = math.floor(num/12)
+    perc = (num%12)*5
+    nagymutato = ((num%12)/12)*360
+    kismutato = (((num/12)%12)/12)*360
+    #print(num, nagymutato, kismutato, f"{ora}:{perc}", num/12)
+    return nagymutato, kismutato, ora, perc
+    
 
 with open("parameters.txt", "r", encoding="utf-8") as file:
     for i in file:
@@ -202,6 +206,8 @@ elif webcam==2: # OBS
     cap = cv2.VideoCapture(webcam)
     cap.set(3, 1280)
     cap.set(4, 720)
+
+
 
 #térkép betöltése
 megyek = cv2.imread("vakterkep_edit.png")
@@ -465,12 +471,14 @@ while running:
         while True:
             
             st = time.perf_counter()
-            angles = []
+            kisAngles = []
+            nagyAngles = []
+            
             #! IDEIGLENES
-            correct_angle = 180
-            clock_center = (1000, 1000)
+            nagyM, kisM, oraV, percV = RandomHour()
+            clock_center = (962, 540)
 
-
+            print(f"{oraV}:{percV}")
             while time.perf_counter() < st + guessTime:
                 # Kép beolvasása a webkamerából
                 
@@ -497,27 +505,52 @@ while running:
                     for circle in circles:#[0, :]:
                         center = (circle[0], circle[1])
                         radius = circle[2]
+                        distToCenter = math.dist(center, clock_center)
+                        if distToCenter < 300:
+                            color = (0, 0, 255)
+                        else:
+                            color = (255, 0, 0)
 
                         #utolsó fél másodperc, az összes távolságot elmentem, amiből kiválasztom a legközelebbit
                         if time.perf_counter() > st + guessTime - 0.5:
                             
                             dx, dy = clock_center[0]-center[0], clock_center[1]-center[1]
                             angle = math.degrees(math.atan2(dy, dx))
-                            dist = abs(correct_angle-angle)
+                            angle -= 90
+
+                            if angle < 0:
+                                angle += 360
+                            
+                            if distToCenter < 300: 
+                                distToAngle = abs(kisM-angle)
+                                kisAngles.append([angle, distToAngle])
+                            else:
+                                distToAngle = abs(nagyM-angle)
+                                nagyAngles.append([angle, distToAngle])
                             
 
-                            angles.append([angle, dist])
+                            
+                            
 
-                        cv2.circle(screen, center, radius+5, (0, 0, 255), 3)
-                        #cv2.circle(megyek, center, testradius, (255, 0, 0), testwidth)
-            if not angles:
-                best = False
+                        cv2.circle(screen, center, radius+5, color, 3)
+                        cv2.circle(screen, clock_center, testradius, (255, 0, 0), testwidth)
+                        cv2.line(screen, clock_center, center, color, 10)
+                        
+            if not kisAngles or not nagyAngles:
+                kisBest, nagyBest = False, False
             else:
-                best = min(angles, key=lambda x: x[1])
-                best[1] = max(best[1]-5, 0)
+                #selecting smallest
+                kisBest = min(kisAngles, key=lambda x: x[1])
+                nagyBest = min(nagyAngles, key=lambda x: x[1])
 
+                #subtracting the tolerance
+                kisBest[1] = max(kisBest[1]-5, 0)
+                nagyBest[1] = max(nagyBest[1]-5, 0)
 
-            playerGuesses.append(best)
+                print(kisBest, nagyBest)
+
+            playerGuesses.append([kisBest, nagyBest])
+            print(playerGuesses)
 
 cap.release()
 cv2.destroyAllWindows()
