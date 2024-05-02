@@ -4,6 +4,8 @@ from PIL import ImageFont, ImageDraw, Image
 
 yogaSize = (1366, 768)
 screenSize = (1920, 1080)
+clock_center = (962, 540)
+
 
 testradius=20
 testwidth=30
@@ -48,7 +50,7 @@ class Button:
         
         color = (255, 0, 0)
         if objects is not None:
-            for ob in objects:#[0, :]:
+            for ob in objects:
                 if (self.t[0] < ob[0] < self.b[0]) and (self.t[1] < ob[1] < self.b[1]):
                     color = (0, 0, 255)
 
@@ -76,7 +78,7 @@ class Slider:
     def update(self, screen, objects):
         cv2.line(screen, self.t, self.b, (255, 0, 0), 20)
         if objects is not None:
-            for ob in objects:#[0, :]:
+            for ob in objects:
                 if (self.t[0]-100 < ob[0] < self.t[0]+100) and (self.t[1] < ob[1] < self.b[1]):
                     cv2.line(screen, self.t, (self.t[0], int(ob[1])), (0, 255, 0), 20)
                     cv2.circle(screen, (self.t[0], int(ob[1])), 30, (0, 255, 0), 30)
@@ -134,7 +136,7 @@ def DetectSquares(source, screen):
                 y+=i[0][1]
             squares.append((x/4, y/4))
 
-        if len(approx) == 3 and peri < 300 and peri > 0:
+        if len(approx) == 3 and peri < 500 and peri > 0:
             cv2.drawContours(screen, [approx], -1, (255, 0, 0), 10)
 
     #displaying test screens
@@ -146,7 +148,7 @@ def DetectSquares(source, screen):
 def DisplayCircles(screen, circles):
     if circles is None:
         return
-    for circle in circles:#[0, :]:
+    for circle in circles:
         
         center = (circle[0], circle[1])
         radius = circle[2]
@@ -175,14 +177,12 @@ def CenteredText(image, string, loc, size, color, thickness):
     return image
 
 def RandomHour():
-
     num = random.randint(0, 288)
     ora = math.floor(num/12)
     perc = (num%12)*5
     nagymutato = ((num%12)/12)*360
     kismutato = (((num/12)%12)/12)*360
-    #print(num, nagymutato, kismutato, f"{ora}:{perc}", num/12)
-    return nagymutato, kismutato, ora, perc
+    return kismutato, nagymutato, f"{ora}:{perc}"
     
 
 with open("parameters.txt", "r", encoding="utf-8") as file:
@@ -230,19 +230,19 @@ cv2.setWindowProperty("main", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 cv2.imshow("main", megyek)
 cv2.waitKey(1)
 
-
-screen = megyek.copy()
-screen = np.zeros((screenSize[1], screenSize[0], 3), dtype = np.uint8)
-
+blank = np.zeros((screenSize[1], screenSize[0], 3), dtype = np.uint8)
+screen = blank.copy()
 
 
 
 while running:
     playerGuesses = []
     chosenLocations = []
-    gameButton = Button((500, 600), (1920-500, 900), 10, "Game", 4, 3)
-    showButton = Button((500, 200), (1920-500, 500), 10, "Showcase", 4, 3)
-    clockButton = Button((0, 0), (300, 300), 10, "Clock", 4, 3)
+    gameButton = Button((500, 200), (1920-500, 900), 10, "Game", 4, 3)
+    clockButton = Button((500, 600), (1920-500, 900), 10, "Clock", 4, 3)
+    showButton = Button((1920-200, 300), (1920-100, 500), 10, "Showcase", 4, 3)
+    
+    
     while not gameButton.isPressed and not showButton.isPressed and not clockButton.isPressed:
 
         ret, frame = cap.read()
@@ -260,7 +260,7 @@ while running:
         cv2.waitKey(1)
         
         #clear screen
-        screen = megyek.copy()
+        screen = blank.copy()
         #screen = np.zeros((screenSize[1], screenSize[0], 3), dtype = np.uint8)
 
         squares = DetectSquares(gray, screen)
@@ -288,9 +288,7 @@ while running:
 
                 #létrehozok egy alaphátteret, így nem kell minden kamerafeldolgozásnál kiírni az adott helyszín nevét
                 megyekT = megyek.copy()
-                #cv2.putText(megyekT, location.name, (500, 150), cv2.FONT_HERSHEY_COMPLEX, 5, (255, 0, 0), 20)
                 CenteredText(megyekT, location.name, (screenSize[0]/2, 100), 5, (255, 0, 0), 20)
-                #megyekT=text_utf(megyekT, "áááééőőóóüüöúű", (500, 150), 90)
                 st = time.perf_counter()
                 dists = []
 
@@ -309,14 +307,14 @@ while running:
                     #clear screen
                     screen = megyekT.copy()
 
-
+                    #timer
                     cv2.putText(screen, str(round((st+guessTime-time.perf_counter()))), (100, 300), cv2.FONT_HERSHEY_SIMPLEX, 5, (255, 0, 0), 20)
 
                     circles = DetectCircles(gray)
                 
                     if circles is not None:
                         #összes körön végigmenni
-                        for circle in circles:#[0, :]:
+                        for circle in circles:
                             center = (circle[0], circle[1])
                             radius = circle[2]
 
@@ -376,7 +374,6 @@ while running:
             screen = megyek.copy()
 
             totalDistance = 0
-
             for playerGuess, loc in zip(playerGuesses, chosenLocations):
                 if playerGuess:
                     print(playerGuess.center, playerGuess.dist, loc.coords, loc.name)
@@ -385,15 +382,13 @@ while running:
                     cv2.circle(screen, loc.coords, testradius, (0, 0, 255), 20)
                     totalDistance += playerGuess.dist
 
-            #cv2.putText(screen, f"Total distance: {totalDistance}", (400,900), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 20)
+            
             CenteredText(screen, f"Total distance: {totalDistance}", (screenSize[0]/2, 950), 3, (255, 0, 0), 10)
             megyekT = screen.copy()
             cv2.imshow('main', screen)
             cv2.waitKey(1)
 
             selecting = True
-            lefttime = None
-            righttime = None
 
             contButton = Button((500, 600), (1920-500, 900), 15, "Continue", 4, 3)
             exitButton = Button((500, 200), (1920-500, 500), 15, "Exit", 4, 3)
@@ -466,22 +461,157 @@ while running:
             if menuButton.isPressed:
                 showcasing = False
 
-    else:
+    elif clockButton.isPressed:
+        clock = True
+        while clock:
+            playerGuesses = []
+            chosen_times = []
+            for i in range(questions):
+                chosen_times.append(list(RandomHour()))
 
-        while True:
             
-            st = time.perf_counter()
-            kisAngles = []
-            nagyAngles = []
             
-            #! IDEIGLENES
-            nagyM, kisM, oraV, percV = RandomHour()
-            clock_center = (962, 540)
+            
+            
+            for toguess in chosen_times:
+                #alapháttér létrehozása
+                oraT = ora.copy()
+                CenteredText(oraT, toguess[2], (screenSize[0]/2, 100), 5, (255, 0, 0), 20)
 
-            print(f"{oraV}:{percV}")
-            while time.perf_counter() < st + guessTime:
-                # Kép beolvasása a webkamerából
-                
+                kisAngles = []
+                nagyAngles = []
+                st = time.perf_counter()
+                #while guessing
+                while time.perf_counter() < st + guessTime:
+                    # Kép beolvasása a webkamerából
+                    
+                    ret, frame = cap.read()
+                    #check ha hiba
+                    if not ret:
+                        print("Hiba a kép beolvasásakor")
+                        break
+
+                    #gray
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    #gray upscale
+                    gray = cv2.resize(gray, screenSize)
+
+                    cv2.imshow('main', screen)
+                    cv2.waitKey(1)
+
+                    screen = oraT.copy()
+
+                    #timer
+                    cv2.putText(screen, str(round((st+guessTime-time.perf_counter()))), (100, 300), cv2.FONT_HERSHEY_SIMPLEX, 5, (255, 0, 0), 20)
+
+                    circles = DetectCircles(gray)
+
+                    if circles is not None:
+                        #összes körön végigmenni
+                        for circle in circles:
+                            center = (circle[0], circle[1])
+                            radius = circle[2]
+                            distToCenter = math.dist(center, clock_center)
+                            lineWidth = 10
+                            if distToCenter < 300:
+                                color = (0, 0, 255)
+                            else:
+                                color = (255, 0, 0)
+                                lineWidth += 7
+
+                            #utolsó fél másodperc, az összes távolságot elmentem, amiből kiválasztom a legközelebbit
+                            if time.perf_counter() > st + guessTime - 0.5:
+                                
+                                dx, dy = clock_center[0]-center[0], clock_center[1]-center[1]
+                                angle = math.degrees(math.atan2(dy, dx))
+                                angle -= 90
+
+                                if angle < 0:
+                                    angle += 360
+                                
+                                if distToCenter < 300:
+                                     
+                                    distToAngle = abs(toguess[0]-angle)
+                                    kisAngles.append([angle, distToAngle, center, radius])
+                                else:
+                                    distToAngle = abs(toguess[1]-angle)
+                                    nagyAngles.append([angle, distToAngle, center, radius])
+                                
+
+                            cv2.circle(screen, center, radius+5, color, 3)
+                            #cv2.circle(screen, clock_center, testradius, (255, 0, 0), testwidth)
+                            cv2.line(screen, clock_center, center, color, lineWidth)
+                            
+                if not kisAngles or not nagyAngles:
+                    kisBest, nagyBest = False, False
+                else:
+                    #selecting smallest
+                    kisBest = min(kisAngles, key=lambda x: x[1])
+                    nagyBest = min(nagyAngles, key=lambda x: x[1])
+
+                    #subtracting the tolerance
+                    kisBest[1] = max(kisBest[1]-5, 0)
+                    nagyBest[1] = max(nagyBest[1]-5, 0)
+
+                    print(kisBest, nagyBest)
+
+
+                playerGuesses.append([kisBest, nagyBest])
+
+                #displaying results
+                wt = time.perf_counter()
+                while time.perf_counter() < wt + displayTime:
+                    screen = oraT.copy()
+                    #if this guess has any value
+                    
+                    if kisBest:
+                        if kisBest[0]:
+                        #draw in the guesses the player made
+                            cv2.line(screen, clock_center, kisBest[2], (0, 0, 255), 10)
+                            cv2.line(screen, clock_center, nagyBest[2], (255, 0, 0), 10)
+
+                            
+                            #draw in the correct orientation of the clock
+                            endpoint = [int(200*(math.cos((toguess[0]-90)*(math.pi/180)))+clock_center[0]), int(200*(math.sin((toguess[0]-90)*(math.pi/180)))+clock_center[1])]
+                            cv2.line(screen, clock_center, endpoint, (0, 255, 0), 10)
+
+                            endpoint = [int(450*(math.cos((toguess[1]-90)*(math.pi/180)))+clock_center[0]), int(450*(math.sin((toguess[1]-90)*(math.pi/180)))+clock_center[1])]
+                            cv2.line(screen, clock_center, endpoint, (0, 255, 0), 10)
+
+                            
+
+                            CenteredText(screen, f"Kismutato elteres: {round(kisBest[1], 1)}", (screenSize[0]/2, 750), 3, (255, 0, 0), 10)
+                            CenteredText(screen, f"Nagymutato elteres: {round(nagyBest[1], 1)}", (screenSize[0]/2, 950), 3, (255, 0, 0), 10)
+                    else:
+                        CenteredText(screen, "Nincs tipp", (screenSize[0]/2, 950), 3, (255, 0, 0), 10)
+
+                    cv2.putText(screen, str(round((wt+displayTime-time.perf_counter()))), (300, 300), cv2.FONT_HERSHEY_SIMPLEX, 5, (255, 0, 0), 20)
+
+
+                    cv2.imshow('main', screen)
+                    cv2.waitKey(1)
+
+                    time.sleep(0.5)
+
+            nagyDeviance = 0
+            kisDeviance = 0
+            for i in playerGuesses:
+                kisDeviance += i[0][1]
+                nagyDeviance += i[1][1]
+            
+            oraT = ora.copy()
+
+            CenteredText(oraT, f"Kitmutato elteres: {round(kisDeviance, 1)}", (900, 200), 3, (255, 0, 0), 11)
+            CenteredText(oraT, f"Nagymutato elteres: {round(nagyDeviance, 1)}", (900, 400), 3, (255, 0, 0), 11)
+            
+
+            selecting = True
+    
+            contButton = Button((200, 500), (900, 800), 15, "Continue", 4, 11)
+            exitButton = Button((1020, 500), (1620, 800), 15, "Exit", 4, 11)
+
+            while selecting:
+                #összes körön végigmenni
                 ret, frame = cap.read()
                 #check ha hiba
                 if not ret:
@@ -493,64 +623,23 @@ while running:
                 #gray upscale
                 gray = cv2.resize(gray, screenSize)
 
-                cv2.imshow('main', screen)
-                cv2.waitKey(1)# Kapcsolat bontása és összes ablak bezárása
-
-                screen = ora.copy()
-
                 circles = DetectCircles(gray)
 
-                if circles is not None:
-                    #összes körön végigmenni
-                    for circle in circles:#[0, :]:
-                        center = (circle[0], circle[1])
-                        radius = circle[2]
-                        distToCenter = math.dist(center, clock_center)
-                        if distToCenter < 300:
-                            color = (0, 0, 255)
-                        else:
-                            color = (255, 0, 0)
+                cv2.imshow('main', screen)
+                cv2.waitKey(1)
 
-                        #utolsó fél másodperc, az összes távolságot elmentem, amiből kiválasztom a legközelebbit
-                        if time.perf_counter() > st + guessTime - 0.5:
-                            
-                            dx, dy = clock_center[0]-center[0], clock_center[1]-center[1]
-                            angle = math.degrees(math.atan2(dy, dx))
-                            angle -= 90
+                screen = oraT.copy()
 
-                            if angle < 0:
-                                angle += 360
-                            
-                            if distToCenter < 300: 
-                                distToAngle = abs(kisM-angle)
-                                kisAngles.append([angle, distToAngle])
-                            else:
-                                distToAngle = abs(nagyM-angle)
-                                nagyAngles.append([angle, distToAngle])
-                            
+                DisplayCircles(screen, circles)
 
-                            
-                            
+                contButton.update(screen, circles)
+                exitButton.update(screen, circles)
 
-                        cv2.circle(screen, center, radius+5, color, 3)
-                        cv2.circle(screen, clock_center, testradius, (255, 0, 0), testwidth)
-                        cv2.line(screen, clock_center, center, color, 10)
-                        
-            if not kisAngles or not nagyAngles:
-                kisBest, nagyBest = False, False
-            else:
-                #selecting smallest
-                kisBest = min(kisAngles, key=lambda x: x[1])
-                nagyBest = min(nagyAngles, key=lambda x: x[1])
-
-                #subtracting the tolerance
-                kisBest[1] = max(kisBest[1]-5, 0)
-                nagyBest[1] = max(nagyBest[1]-5, 0)
-
-                print(kisBest, nagyBest)
-
-            playerGuesses.append([kisBest, nagyBest])
-            print(playerGuesses)
+                if contButton.isPressed:
+                    selecting = False
+                if exitButton.isPressed:
+                    clock = False
+                    selecting = False
 
 cap.release()
 cv2.destroyAllWindows()
