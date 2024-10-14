@@ -1,8 +1,9 @@
 import cv2, time, math, random, os
 import numpy as np
-from PIL import ImageFont, ImageDraw, Image
 
-yogaSize = (1366, 768)
+#from PIL import ImageFont, ImageDraw, Image
+
+
 screenSize = (1920, 1080)
 clock_center = (962, 540)
 
@@ -104,6 +105,22 @@ def DetectCircles(source):
         # Körök koordinátáinak kinyerése
         return np.uint16(np.around(insideCircles))[0, :]
 
+def calculate_angle(v1, v2):
+    # Calculate the dot product and magnitudes
+    dot_prod = np.dot(v1, v2)
+    mag_v1 = np.linalg.norm(v1)
+    mag_v2 = np.linalg.norm(v2)
+    
+    # Calculate the cosine of the angle
+    cos_theta = dot_prod / (mag_v1 * mag_v2)
+    
+    # Clip the cosine value to avoid numerical errors causing domain errors in arccos
+    #cos_theta = np.clip(cos_theta, -1.0, 1.0)
+    
+    # Calculate the angle in radians and then convert to degrees
+    angle = np.arccos(cos_theta)
+    return np.degrees(angle)
+
 def DetectSquares(source, screen):
     #blurring
     blurred = cv2.GaussianBlur(source, (5, 5), 0)
@@ -136,8 +153,33 @@ def DetectSquares(source, screen):
                 y+=i[0][1]
             squares.append((x/4, y/4))
 
-        if len(approx) == 3 and peri < 500 and peri > 0:
+        if len(approx) == 3:# and peri < 500 and peri > 0:
             cv2.drawContours(screen, [approx], -1, (255, 0, 0), 10)
+            A, B, C = approx[0][0], approx[1][0], approx[2][0]
+
+            ab = B - A
+            ac = C - A
+
+            ba = A - B
+            bc = C - B
+
+
+            angle_A = calculate_angle(ab, ac)
+            angle_B = calculate_angle(ba, bc)
+            angle_C = 180 - (angle_A + angle_B)
+            print(angle_A, angle_B, angle_C)
+
+            angles = [angle_A, angle_B, angle_C]
+            minLoc = approx[angles.index(min(angles))][0]
+            print(minLoc)
+
+            cv2.circle(test, minLoc, 5, (255, 0, 0), 5)
+            cv2.circle(screen, minLoc, 5, (255, 0, 0), 5)
+
+            dx, dy = clock_center[0]-center[0], clock_center[1]-center[1]
+            angle = math.degrees(math.atan2(dy, dx)) - 90
+           
+            
 
     #displaying test screens
     cv2.imshow("teszt", edges)
@@ -180,6 +222,13 @@ def RandomHour():
     num = random.randint(0, 288)
     ora = math.floor(num/12)
     perc = (num%12)*5
+    
+    #formatting the clock
+    if len(str(ora)) == 1:
+        ora = "0"+str(ora)
+    if len(str(perc)) == 1:
+        perc = "0"+str(perc)
+
     nagymutato = ((num%12)/12)*360
     kismutato = (((num/12)%12)/12)*360
     return kismutato, nagymutato, f"{ora}:{perc}"
@@ -192,20 +241,32 @@ with open("parameters.txt", "r", encoding="utf-8") as file:
 with open("allocations.txt", "r", encoding="utf-8") as file:
     allLocations = file.read().split("\n")
 
-if webcam==0: #integrált cam
-    cap = cv2.VideoCapture(webcam)
-    cap.set(3, 1920)
-    cap.set(4, 1080)
 
-elif webcam==1: #amikor van logitech akkor az, ha nincs akkor OBS
-    cap = cv2.VideoCapture(webcam, cv2.CAP_DSHOW)
-    cap.set(3, 1280)
-    cap.set(4, 720)
+if os.name == "posix":
+    displaySize = (3024, 1964)
 
-elif webcam==2: # OBS
     cap = cv2.VideoCapture(webcam)
     cap.set(3, 1280)
     cap.set(4, 720)
+
+    
+else:
+    displaySize = (1366, 768)
+    if webcam==0: #integrált cam
+        cap = cv2.VideoCapture(webcam)
+        cap.set(3, 1920)
+        cap.set(4, 1080)
+
+    elif webcam==1: #amikor van logitech akkor az, ha nincs akkor OBS
+        cap = cv2.VideoCapture(webcam, cv2.CAP_DSHOW)
+        cap.set(3, 1280)
+        cap.set(4, 720)
+
+    elif webcam==2: # OBS
+        cap = cv2.VideoCapture(webcam)
+        cap.set(3, 1280)
+        cap.set(4, 720)
+
 
 
 
@@ -219,7 +280,7 @@ ora = cv2.resize(ora, screenSize)
 cv2.namedWindow("main", cv2.WINDOW_NORMAL)
 
 #az ablaknak a mozgatása a projektor másodlagos képernyőjére
-cv2.moveWindow("main", yogaSize[0], 0)
+cv2.moveWindow("main", displaySize[0], 0)
 
 cv2.namedWindow("teszt", cv2.WINDOW_NORMAL)
 cv2.namedWindow("teszt2", cv2.WINDOW_NORMAL)
@@ -231,16 +292,16 @@ cv2.imshow("main", megyek)
 cv2.waitKey(1)
 
 blank = np.zeros((screenSize[1], screenSize[0], 3), dtype = np.uint8)
-screen = blank.copy()
+screen = megyek.copy()
 
 
 
 while running:
     playerGuesses = []
     chosenLocations = []
-    gameButton = Button((500, 200), (1920-500, 900), 10, "Game", 4, 3)
-    clockButton = Button((500, 600), (1920-500, 900), 10, "Clock", 4, 3)
-    showButton = Button((1920-200, 300), (1920-100, 500), 10, "Showcase", 4, 3)
+    gameButton = Button((500-200, 200), (1420-200, 500), 10, "Game", 4, 3)
+    clockButton = Button((500-200, 600), (1420-200, 900), 10, "Clock", 4, 3)
+    showButton = Button((1520-200, 200), (1820, 900), 10, "Show", 4, 3)
     
     
     while not gameButton.isPressed and not showButton.isPressed and not clockButton.isPressed:
@@ -260,7 +321,7 @@ while running:
         cv2.waitKey(1)
         
         #clear screen
-        screen = blank.copy()
+        screen = megyek.copy()
         #screen = np.zeros((screenSize[1], screenSize[0], 3), dtype = np.uint8)
 
         squares = DetectSquares(gray, screen)
@@ -596,14 +657,21 @@ while running:
             nagyDeviance = 0
             kisDeviance = 0
             for i in playerGuesses:
-                kisDeviance += i[0][1]
-                nagyDeviance += i[1][1]
+                if i[0]:
+                    kisDeviance += i[0][1]
+                    nagyDeviance += i[1][1]
             
             oraT = ora.copy()
 
             CenteredText(oraT, f"Kitmutato elteres: {round(kisDeviance, 1)}", (900, 200), 3, (255, 0, 0), 11)
             CenteredText(oraT, f"Nagymutato elteres: {round(nagyDeviance, 1)}", (900, 400), 3, (255, 0, 0), 11)
             
+            cv2.imshow('main', oraT)
+            cv2.waitKey(1)
+
+            screen = oraT.copy()
+
+            time.sleep(2)
 
             selecting = True
     
