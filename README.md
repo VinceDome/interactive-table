@@ -11,3 +11,4 @@ A projector and a camera are suspended above a table, using a piece of wood and 
 - The code uses various image recognition techniques to minimize the margin of error of the shape detection, and make it functional in various lighting conditions.
 - The structure that holds up the projector and the webcam 1.5 meters above the table is made up of a wooden plank, two 3d printed parts, a few screws, and is attached to the table using two clamps.
 - This project got second place on the competition [MiniMaker](https://fb.me/e/4cgvXt9h6) (hosted by [Fablab](https://www.fablabbudapest.com/)).
+- This project was selected for exhibition at the [Maker Fare](https://makerfairerome.eu/en/) in Rome 2025
